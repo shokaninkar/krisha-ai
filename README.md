@@ -33,3 +33,7 @@ Next.js 16 (App Router), TypeScript, Groq (GPT-OSS 120B), cheerio, Tailwind CSS.
 ## Caveat
 
 krisha.kz is scraped server-side. If the site rate-limits the deployment's IP range, searches fail with a 500 from `/api/listings`; run locally or add a proxy.
+
+## Eval
+
+`npm run eval` runs 10 fixed requests (Russian and English, rent and buy, floor rules) through the live parser and checks the extracted filters. `npm run eval -- --scrape` also checks that every returned listing obeys the floor rules.

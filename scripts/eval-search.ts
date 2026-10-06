@@ -26,8 +26,8 @@ const CASES: Case[] = [
 
 function diff(got: SearchFilters, want: Partial<SearchFilters>): string[] {
   return Object.entries(want)
-    .filter(([k, v]) => (got as Record<string, unknown>)[k] !== v)
-    .map(([k, v]) => `${k}: want ${JSON.stringify(v)}, got ${JSON.stringify((got as Record<string, unknown>)[k])}`);
+    .filter(([k, v]) => (got as unknown as Record<string, unknown>)[k] !== v)
+    .map(([k, v]) => `${k}: want ${JSON.stringify(v)}, got ${JSON.stringify((got as unknown as Record<string, unknown>)[k])}`);
 }
 
 async function main() {
