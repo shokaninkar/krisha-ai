@@ -6,6 +6,10 @@ export interface SearchFilters {
   maxPrice?: number | null;
   district?: string | null;
   minArea?: number | null;
+  minFloor?: number | null;
+  maxFloor?: number | null;
+  notFirstFloor?: boolean;
+  notLastFloor?: boolean;
   keywords?: string[];
 }
 

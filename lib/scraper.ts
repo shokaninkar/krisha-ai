@@ -44,6 +44,10 @@ function buildUrl(filters: SearchFilters): string {
   if (filters.minArea) {
     params.push(`das[live.square][from]=${filters.minArea}`);
   }
+  if (filters.notFirstFloor) params.push("das[floor_not_first]=1");
+  if (filters.notLastFloor) params.push("das[floor_not_last]=1");
+  if (filters.minFloor) params.push(`das[flat.floor][from]=${filters.minFloor}`);
+  if (filters.maxFloor) params.push(`das[flat.floor][to]=${filters.maxFloor}`);
   if (filters.district) {
     const id = resolveDistrictId(filters.district, city);
     if (id !== null) {
@@ -58,6 +62,17 @@ function buildUrl(filters: SearchFilters): string {
   }
 
   return url;
+}
+
+// Krisha's floor params filter the main results but not every card on the page,
+// so enforce them again here. Unknown floors pass; we can't prove they break the rule.
+export function matchesFloor(f: SearchFilters, floor?: number, total?: number): boolean {
+  if (floor === undefined) return true;
+  if (f.notFirstFloor && floor <= 1) return false;
+  if (f.notLastFloor && total !== undefined && floor >= total) return false;
+  if (f.minFloor && floor < f.minFloor) return false;
+  if (f.maxFloor && floor > f.maxFloor) return false;
+  return true;
 }
 
 export async function scrapeListings(filters: SearchFilters): Promise<Listing[]> {
@@ -111,8 +126,12 @@ export async function scrapeListings(filters: SearchFilters): Promise<Listing[]>
     const areaMatch = titleText.match(/([\d.]+)\s*м²/);
     const area = areaMatch ? areaMatch[1] + " м²" : "—";
 
-    const floorMatch = titleText.match(/(\d+)\/(\d+)\s*этаж/);
-    const floor = floorMatch ? `${floorMatch[1]}/${floorMatch[2]} эт.` : "—";
+    // Either "3/13 этаж" (floor/total) or just "1 этаж" for houses and some cards
+    const floorMatch = titleText.match(/(\d+)(?:\/(\d+))?\s*этаж/);
+    const floorNum = floorMatch ? parseInt(floorMatch[1], 10) : undefined;
+    const floorTotal = floorMatch?.[2] ? parseInt(floorMatch[2], 10) : undefined;
+    const floor = floorNum === undefined ? "—" : floorTotal ? `${floorNum}/${floorTotal} эт.` : `${floorNum} эт.`;
+    if (!matchesFloor(filters, floorNum, floorTotal)) return;
 
     // Address is in .a-card__subtitle
     const subtitle = card.find(".a-card__subtitle").first().text().trim();

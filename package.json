@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "eval": "tsx --env-file=.env.local scripts/eval-search.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.2",

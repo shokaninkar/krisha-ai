@@ -27,12 +27,17 @@ export async function parseQuery(userQuery: string): Promise<SearchFilters> {
   "maxPrice": number | null,
   "district": string | null,
   "minArea": number | null,
+  "minFloor": number | null,
+  "maxFloor": number | null,
+  "notFirstFloor": boolean,
+  "notLastFloor": boolean,
   "keywords": string[]
 }
 
 Rules:
 - city: one of almaty, astana, shymkent, aktobe, karaganda, atyrau, pavlodar, taraz, semey, kostanay. Default: "almaty"
-- type: "rent" if user says аренда/снять/снимать/rent. "buy" if купить/продажа/buy/purchase. Default: "rent"
+- type: "rent" if user says аренда/снять/снимать/в месяц/rent/per month. "buy" if купить/продажа/покупка/buy/purchase.
+  If neither is said, decide from the budget: a price of 3 млн (3,000,000 KZT) or more is a purchase price, so "buy". Below that, "rent". With no price and no word either way, "rent"
 - rooms: integer. "студия" or "studio" = 1. null if not mentioned
 - Prices are in KZT. "млн" = ×1,000,000. "тыс" or "к" = ×1,000. "$" or USD = ×500
 - "до X" = maxPrice. "от X" = minPrice. "X–Y" = minPrice + maxPrice
@@ -47,6 +52,9 @@ Rules:
   наурызбай/наурызбайский → "Наурызбайский"
   турксиб/турксибский → "Турксибский"
 - minArea: minimum area in m². "от X кв" / "30+ sqm" / "от 30 м²" → number. null if not mentioned
+- Floors: "не первый этаж"/"не на первом" → notFirstFloor: true. "не последний"/"не на последнем" → notLastFloor: true.
+  "выше N этажа" → minFloor: N+1. "не выше N" / "до N этажа" → maxFloor: N. "с N по M этаж" → minFloor N, maxFloor M. Otherwise null / false.
+  Floor wishes go ONLY in these fields, never in keywords.
 - keywords: other relevant terms
 
 Examples:
@@ -55,6 +63,7 @@ Examples:
 - "studio apartment for rent astana" → {"city":"astana","type":"rent","rooms":1,"minPrice":null,"maxPrice":null,"district":null,"keywords":["studio"]}
 - "1-комнатная от 100 до 150 тыс" → {"city":"almaty","type":"rent","rooms":1,"minPrice":100000,"maxPrice":150000,"district":null,"keywords":[]}
 - "медеуский район 2 комнаты" → {"city":"almaty","type":"rent","rooms":2,"minPrice":null,"maxPrice":null,"district":"Медеуский","keywords":[]}
+- "2-комнатная в Алматы до 40 млн, не первый этаж" → {"city":"almaty","type":"buy","rooms":2,"minPrice":null,"maxPrice":40000000,"district":null,"minArea":null,"minFloor":null,"maxFloor":null,"notFirstFloor":true,"notLastFloor":false,"keywords":[]}
 
 Query: "${userQuery}"`,
       },
@@ -65,7 +74,31 @@ Query: "${userQuery}"`,
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error("Failed to parse query into filters");
 
-  return JSON.parse(jsonMatch[0]) as SearchFilters;
+  return normalizeFilters(JSON.parse(jsonMatch[0]) as SearchFilters, userQuery);
+}
+
+const RENT_WORDS = /аренд|снять|снима|в месяц|\/\s*мес|помесячн|посуточн|\brent|per month/i;
+const BUY_WORDS = /купить|куплю|продаж|покупк|\bbuy|purchase/i;
+const PURCHASE_PRICE_FLOOR = 3_000_000; // no monthly rent in Kazakhstan is this high
+
+// Code-side guard behind the prompt: the model's guesses are corrected by rules
+// that are cheap to check, so a wrong guess never reaches the scraper.
+export function normalizeFilters(f: SearchFilters, query: string): SearchFilters {
+  const out: SearchFilters = { ...f, keywords: [...(f.keywords ?? [])] };
+  const q = query.toLowerCase();
+
+  if (RENT_WORDS.test(q)) out.type = "rent";
+  else if (BUY_WORDS.test(q)) out.type = "buy";
+  else if ((out.maxPrice ?? 0) >= PURCHASE_PRICE_FLOOR || (out.minPrice ?? 0) >= PURCHASE_PRICE_FLOOR) out.type = "buy";
+
+  if (/не\s+(на\s+)?перв/.test(q)) out.notFirstFloor = true;
+  if (/не\s+(на\s+)?последн/.test(q)) out.notLastFloor = true;
+  out.notFirstFloor = !!out.notFirstFloor;
+  out.notLastFloor = !!out.notLastFloor;
+  out.minFloor = out.minFloor ?? null;
+  out.maxFloor = out.maxFloor ?? null;
+  out.keywords = (out.keywords ?? []).filter(k => !/этаж/i.test(k));
+  return out;
 }
 
 export async function rankAndSummarize(
