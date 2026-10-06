@@ -167,7 +167,7 @@ ${JSON.stringify(listingsForAI, null, 2)}
 
 Rank ALL ${listingsForAI.length} listings. Return ONLY valid JSON:
 {
-  "aiMessage": "2-3 sentences in Russian: what was found, best options, ${isRent ? "tips on monthly budget" : "tips on price per m² or total value"}",
+  "aiMessage": "2-3 sentences in Russian: what was found, best options, ${isRent ? "tips on monthly budget" : "tips on price per m² or total value"}. Name options by district and price (e.g. «в Алатауском районе за 28 млн»), never by index number. Use only numbers present in the listings above.",
   "ranked": [
     { "index": 0, "score": 85, "summary": "One sentence in Russian why this listing is a ${isRent ? "good rental" : "good purchase"}" }
   ]
