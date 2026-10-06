@@ -6,7 +6,7 @@ Type what you want in Russian or English ("2-комнатная в Алматы 
 
 ## How it works
 
-1. `app/api/search/route.ts` sends the query to Llama 3.3 70B on Groq and gets back a JSON filter object (rooms, price range, area, floor, district).
+1. `app/api/search/route.ts` sends the query to GPT-OSS 120B on Groq and gets back a JSON filter object (rooms, price range, area, floor, district).
 2. `lib/scraper.ts` builds the krisha.kz URL from those filters and parses the listing cards with cheerio.
 3. Results are scored against the original request and returned to the Next.js front end in `app/page.tsx`.
 
@@ -28,7 +28,7 @@ GROQ_API_KEY=...
 
 ## Stack
 
-Next.js 16 (App Router), TypeScript, Groq (Llama 3.3 70B), cheerio, Tailwind CSS.
+Next.js 16 (App Router), TypeScript, Groq (GPT-OSS 120B), cheerio, Tailwind CSS.
 
 ## Caveat
 

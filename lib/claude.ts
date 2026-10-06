@@ -1,7 +1,7 @@
 import Groq from "groq-sdk";
 import type { Listing, SearchFilters } from "./types";
 
-const GROQ_MODEL = "llama-3.3-70b-versatile";
+const GROQ_MODEL = "openai/gpt-oss-120b";
 const client = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 export async function parseQuery(userQuery: string): Promise<SearchFilters> {
@@ -9,6 +9,7 @@ export async function parseQuery(userQuery: string): Promise<SearchFilters> {
     model: GROQ_MODEL,
     max_tokens: 512,
     response_format: { type: "json_object" },
+    reasoning_effort: "low",
     messages: [
       {
         role: "system",
@@ -115,6 +116,7 @@ export async function rankAndSummarize(
     model: GROQ_MODEL,
     max_tokens: 2000,
     response_format: { type: "json_object" },
+    reasoning_effort: "low",
     messages: [
       {
         role: "system",
