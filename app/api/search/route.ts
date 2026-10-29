@@ -2,13 +2,33 @@ import { NextRequest, NextResponse } from "next/server";
 import { parseQuery } from "@/lib/claude";
 import { scrapeListings } from "@/lib/scraper";
 import { rankAndSummarize } from "@/lib/claude";
+import { rateLimit } from "@/lib/rate-limit";
+
+// Each search costs 2 Groq calls and 1 Krisha.kz fetch, so cap abuse of the free quota.
+const MAX_QUERY_LEN = 300;
+const RATE_LIMIT_PER_MIN = 10;
 
 export async function POST(req: NextRequest) {
   try {
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || "unknown";
+    const rl = rateLimit(`search:${ip}`, RATE_LIMIT_PER_MIN, 60);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: `Слишком много запросов. Попробуйте через ${rl.retryAfterSec} с.` },
+        { status: 429, headers: { "Retry-After": String(rl.retryAfterSec) } }
+      );
+    }
+
     const { query } = await req.json();
 
     if (!query || typeof query !== "string") {
       return NextResponse.json({ error: "Query is required" }, { status: 400 });
+    }
+    if (query.length > MAX_QUERY_LEN) {
+      return NextResponse.json(
+        { error: `Запрос должен быть не длиннее ${MAX_QUERY_LEN} символов` },
+        { status: 400 }
+      );
     }
 
     const filters = await parseQuery(query);

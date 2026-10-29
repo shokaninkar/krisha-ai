@@ -80,12 +80,28 @@ Query: "${userQuery}"`,
 const RENT_WORDS = /аренд|снять|снима|в месяц|\/\s*мес|помесячн|посуточн|\brent|per month/i;
 const BUY_WORDS = /купить|куплю|продаж|покупк|\bbuy|purchase/i;
 const PURCHASE_PRICE_FLOOR = 3_000_000; // no monthly rent in Kazakhstan is this high
+const CITIES = ["almaty", "astana", "shymkent", "aktobe", "karaganda", "atyrau", "pavlodar", "taraz", "semey", "kostanay"];
+
+// These values go straight into the Krisha.kz URL, so anything the model returns
+// that isn't a known city or a positive whole number is dropped.
+const posInt = (v: unknown): number | null =>
+  typeof v === "number" && Number.isFinite(v) && v > 0 ? Math.floor(v) : null;
 
 // Code-side guard behind the prompt: the model's guesses are corrected by rules
 // that are cheap to check, so a wrong guess never reaches the scraper.
 export function normalizeFilters(f: SearchFilters, query: string): SearchFilters {
   const out: SearchFilters = { ...f, keywords: [...(f.keywords ?? [])] };
   const q = query.toLowerCase();
+
+  const city = typeof f.city === "string" ? f.city.toLowerCase().trim() : "";
+  out.city = CITIES.includes(city) ? city : "almaty";
+  out.rooms = posInt(f.rooms);
+  out.minPrice = posInt(f.minPrice);
+  out.maxPrice = posInt(f.maxPrice);
+  out.minArea = posInt(f.minArea);
+  out.minFloor = posInt(f.minFloor);
+  out.maxFloor = posInt(f.maxFloor);
+  if (out.type !== "rent" && out.type !== "buy") out.type = "rent";
 
   if (RENT_WORDS.test(q)) out.type = "rent";
   else if (BUY_WORDS.test(q)) out.type = "buy";
